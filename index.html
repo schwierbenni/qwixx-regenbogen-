@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eef1f6">
+<title>Qwixx Regenbogen Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#eef1f6; --paper:#ffffff; --ink:#1d2433; --muted:#667085; --line:#d5dbe6;
+  --red:#d7343c; --yellow:#e8b100; --green:#2c9a47; --blue:#2c58a8;
+  --red-t:#fbe1e2; --yellow-t:#fdf3c8; --green-t:#dcf2e1; --blue-t:#dfe7f6;
+  --cross:#1d2433; --ok:#2c9a47;
+  --f-display:"Baloo 2","Arial Rounded MT Bold",system-ui,sans-serif;
+  --f-body:"Nunito Sans",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#12151c; --paper:#1b202a; --ink:#eef1f7; --muted:#9aa3b5; --line:#2e3646;
+  --red:#ef5a61; --yellow:#f3c636; --green:#4dbb68; --blue:#6b93e0;
+  --red-t:#3a1f23; --yellow-t:#3a3218; --green-t:#1c3324; --blue-t:#1d2840;
+  --cross:#ffffff; --ok:#4dbb68; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;margin:0;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.wrap{max-width:640px;margin:0 auto;padding-inline:16px;padding-block:14px 32px;display:flex;flex-direction:column;gap:14px}
+h1{font-family:var(--f-display);font-weight:800;font-size:1.5rem;line-height:1;margin:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rainbow{display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle}
+.rainbow i{width:8px;height:8px;border-radius:2px;display:block}
+.sync{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync i{width:9px;height:9px;border-radius:50%;background:var(--muted);display:block}
+.sync.on i{background:var(--ok)} .sync.err i{background:var(--red)}
+
+.players{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pl{background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer;text-align:left;font:inherit;color:inherit;min-width:0}
+.pl[aria-pressed="true"]{border-color:var(--ink)}
+.pl .nm{font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .pts{font-family:var(--f-display);font-weight:800;font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
+.pl .sub{font-size:.75rem;color:var(--muted)}
+.me{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--paper);background:var(--ink);border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.pl:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+.dice{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.die{width:18px;height:18px;border-radius:5px;display:block;border:1.5px solid var(--line)}
+.d-w{background:#fff;border-color:#b8bfcc}.d-r{background:var(--red)}.d-y{background:var(--yellow)}.d-g{background:var(--green)}.d-b{background:var(--blue)}
+.die.gone{opacity:.18}
+.banner{border-radius:12px;padding:10px 12px;font-weight:700;background:var(--ink);color:var(--paper)}
+.toast{min-height:1.3em;font-size:.85rem;color:var(--red);font-weight:700}
+
+.sheet{background:var(--paper);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;gap:8px;border:1px solid var(--line)}
+.namefield{display:flex;gap:8px;align-items:center;padding-inline:2px}
+.namefield label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.namefield input{flex:1;min-width:0;font:inherit;font-size:16px;font-weight:700;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);color:var(--ink)}
+#rows{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:repeat(11,1fr) 1.05fr;gap:3px;padding:4px;border-radius:9px;background:var(--line)}
+.row.closed{opacity:.55}
+.cell{aspect-ratio:1/1.12;border-radius:6px;border:2px solid currentColor;background:var(--paper);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:clamp(.8rem,3.6vw,1.2rem);line-height:1;padding:0;cursor:pointer;position:relative;font-variant-numeric:tabular-nums;min-width:0}
+.cell.c-r{color:var(--red);background:var(--red-t)}
+.cell.c-y{color:var(--yellow);background:var(--yellow-t)}
+.cell.c-g{color:var(--green);background:var(--green-t)}
+.cell.c-b{color:var(--blue);background:var(--blue-t)}
+.cell.skip{opacity:.32}
+.cell.x::after{content:"";position:absolute;inset:8%;background:
+  linear-gradient(45deg,transparent 44%,var(--cross) 44%,var(--cross) 56%,transparent 56%),
+  linear-gradient(-45deg,transparent 44%,var(--cross) 44%,var(--cross) 56%,transparent 56%)}
+.lock{border-radius:50%;aspect-ratio:1;align-self:center;border:none;cursor:default}
+.lock.c-r{background:var(--red);color:#fff}.lock.c-y{background:var(--yellow);color:#fff}.lock.c-g{background:var(--green);color:#fff}.lock.c-b{background:var(--blue);color:#fff}
+.lock svg{width:58%;height:58%}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+
+.pen{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;padding:4px 2px 0}
+.pen span{font-size:.8rem;color:var(--muted)}
+.pens{display:flex;gap:6px}
+.pbox{width:34px;height:34px;border-radius:8px;border:2px solid var(--muted);background:var(--paper);position:relative;cursor:pointer;padding:0}
+.pbox.x::after{content:"";position:absolute;inset:14%;background:
+  linear-gradient(45deg,transparent 44%,var(--cross) 44%,var(--cross) 56%,transparent 56%),
+  linear-gradient(-45deg,transparent 44%,var(--cross) 44%,var(--cross) 56%,transparent 56%)}
+.score{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums;padding:4px 2px 0}
+.score .b{min-width:40px;padding:4px 6px;border-radius:8px;border:2px solid currentColor;text-align:center;font-size:1.05rem}
+.score .op{color:var(--muted);font-size:.95rem}
+.score .tot{color:var(--ink);border-width:3px;min-width:52px}
+.table{font-size:.72rem;color:var(--muted);display:grid;grid-template-columns:repeat(12,1fr);gap:2px;text-align:center;font-variant-numeric:tabular-nums}
+.table b{color:var(--ink);font-weight:700}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:10px 14px;cursor:pointer}
+.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.warn{background:var(--red);color:#fff;border-color:var(--red)}
+.btn:disabled{opacity:.4;cursor:default}
+
+.share{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.share .code{font-family:var(--f-display);font-weight:800;font-size:1.3rem;letter-spacing:.08em}
+.share .link{font-size:.8rem;color:var(--muted);word-break:break-all;user-select:all}
+.share p{margin:0;font-size:.85rem;color:var(--muted)}
+
+.start{display:flex;flex-direction:column;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px}
+.start p{margin:0;color:var(--muted);line-height:1.5}
+.start .join{display:flex;gap:8px}
+.start input{flex:1;min-width:0;font:inherit;font-size:16px;text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);color:var(--ink)}
+
+details{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+summary{font-weight:700;cursor:pointer}
+details li{color:var(--muted);font-size:.88rem;line-height:1.5;max-width:65ch}
+details ul{padding-left:18px;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Qwixx Regenbogen<span class="rainbow" aria-hidden="true"><i style="background:var(--red)"></i><i style="background:var(--yellow)"></i><i style="background:var(--green)"></i><i style="background:var(--blue)"></i></span></h1>
+    <div class="sync" id="sync"><i></i><span>Verbinde …</span></div>
+  </div>
+
+  <section class="start" id="start" hidden>
+    <p>Starte ein neues Spiel und schick deinem Mitspieler den Link. Ihr seht beide Blöcke live auf euren Handys.</p>
+    <button class="btn dark" id="startNew">Neues Spiel starten</button>
+    <p>Oder tritt mit einem Spielcode bei:</p>
+    <div class="join"><input id="joinCode" placeholder="z. B. K7M4QX" maxlength="12" autocomplete="off" autocapitalize="characters"><button class="btn" id="joinBtn">Beitreten</button></div>
+  </section>
+
+  <div id="game" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="players" id="players"></div>
+    <div class="dice" id="dice"></div>
+    <div class="banner" id="banner" hidden></div>
+
+    <section class="sheet" aria-label="Spielblock">
+      <div class="namefield"><label for="pname">Name</label><input id="pname" maxlength="18" autocomplete="off"></div>
+      <div id="rows"></div>
+      <div class="pen"><span>Fehlwürfe (je −5)</span><div class="pens" id="pens"></div></div>
+      <div class="score" id="score"></div>
+      <div class="table" aria-label="Punktetabelle">
+        <div>1×<br><b>1</b></div><div>2×<br><b>3</b></div><div>3×<br><b>6</b></div><div>4×<br><b>10</b></div><div>5×<br><b>15</b></div><div>6×<br><b>21</b></div><div>7×<br><b>28</b></div><div>8×<br><b>36</b></div><div>9×<br><b>45</b></div><div>10×<br><b>55</b></div><div>11×<br><b>66</b></div><div>12×<br><b>78</b></div>
+      </div>
+    </section>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="actions">
+      <button class="btn dark" id="undo">Rückgängig</button>
+      <button class="btn" id="newgame">Neue Runde</button>
+      <button class="btn warn" id="confirmNew" hidden>Ja, beide Blöcke leeren</button>
+      <button class="btn" id="cancelNew" hidden>Abbrechen</button>
+    </div>
+
+    <section class="share">
+      <p>Spielcode</p>
+      <div class="code" id="code"></div>
+      <div class="actions"><button class="btn dark" id="shareBtn">Link an Mitspieler senden</button><button class="btn" id="copyBtn">Link kopieren</button></div>
+      <div class="link" id="link"></div>
+      <p>Wer den Link öffnet, spielt als Spieler 2 mit. Kein Konto nötig.</p>
+    </section>
+
+    <details>
+      <summary>Regeln (Original-Qwixx + Regenbogen)</summary>
+      <ul>
+        <li><b>1. Aktion:</b> Der aktive Spieler sagt die Summe der zwei weißen Würfel an. Jeder darf sie in einem beliebigen Feld mit dieser Zahl ankreuzen, egal welche Feldfarbe.</li>
+        <li><b>2. Aktion:</b> Nur der aktive Spieler darf zusätzlich einen weißen Würfel mit einem Farbwürfel addieren. Diese Summe darf er nur in einem Feld <b>der Farbe dieses Würfels</b> ankreuzen.</li>
+        <li>Jede Reihe wird von links nach rechts gefüllt. Übersprungene Felder sind verloren und werden blass.</li>
+        <li>Das Feld ganz rechts geht nur, wenn du vorher mindestens 5 Kreuze in dieser Reihe hast. Dann kreuzt du das Schloss mit an, es zählt als Kreuz. Die Reihe ist danach für alle geschlossen.</li>
+        <li>Geschieht das Abschließen in der 1. Aktion, darf der andere Spieler im selben Wurf ebenfalls abschließen, wenn er mindestens 5 Kreuze hat. Die Seite fragt dafür einmal nach.</li>
+        <li>Beim Abschließen fliegt nur der Farbwürfel in der Farbe des Schlosses raus. Felder dieser Farbe in anderen Reihen kannst du danach nur noch mit der Weiß-Summe ankreuzen.</li>
+        <li><b>Fehlwurf:</b> Nur der aktive Spieler, und nur wenn er in beiden Aktionen nichts angekreuzt hat. Jeder Fehlwurf zählt −5.</li>
+        <li><b>Spielende sofort</b> beim 4. Fehlwurf eines Spielers oder wenn die 2. Reihe geschlossen ist. Im selben Wurf kann noch eine 3. Reihe zugehen.</li>
+        <li><b>Wertung pro Reihe:</b> Kreuze einer Reihe (inklusive Schloss) laut Tabelle. Die Summenfelder tragen die Farbe des jeweiligen Schlosses.</li>
+        <li>Zum Korrigieren tippst du das rechteste Kreuz einer Reihe nochmal an oder nutzt „Rückgängig“.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://vjrnauazucjwgdscwnak.supabase.co';
+const SB_KEY='sb_publishable_ZAJCHhIU4mBaXhPwlbI2QA_Po2ufuGF';
+const ROWS=[
+ {lock:'r',cells:[[2,'y'],[3,'y'],[4,'y'],[5,'b'],[6,'b'],[7,'b'],[8,'g'],[9,'g'],[10,'g'],[11,'r'],[12,'r']]},
+ {lock:'y',cells:[[2,'r'],[3,'r'],[4,'g'],[5,'g'],[6,'g'],[7,'g'],[8,'b'],[9,'b'],[10,'y'],[11,'y'],[12,'y']]},
+ {lock:'g',cells:[[12,'b'],[11,'b'],[10,'b'],[9,'y'],[8,'y'],[7,'y'],[6,'r'],[5,'r'],[4,'r'],[3,'g'],[2,'g']]},
+ {lock:'b',cells:[[12,'g'],[11,'g'],[10,'r'],[9,'r'],[8,'r'],[7,'r'],[6,'y'],[5,'y'],[4,'b'],[3,'b'],[2,'b']]}
+];
+const COLORS=['r','y','g','b'];
+const CNAME={r:'Rot',y:'Gelb',g:'Grün',b:'Blau'};
+const LOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const $=id=>document.getElementById(id);
+
+function freshSeat(i,name){return{name:name||('Spieler '+(i+1)),marks:ROWS.map(()=>Array(11).fill(false)),locks:[false,false,false,false],pen:0,v:0};}
+let seats=[freshSeat(0),freshSeat(1)], active=0, me=0, game=null, hist=[];
+let sb=null, channel=null;
+
+/* ---------- Spiel-Code & URL ---------- */
+const params=new URLSearchParams(location.search);
+function makeCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);return s;}
+function cleanCode(c){return (c||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);}
+function shareUrl(){return location.origin+location.pathname+'?g='+game+'&p=2';}
+
+/* ---------- Wertung & Regeln ---------- */
+const tri=n=>n*(n+1)/2;
+const closed=r=>seats[0].locks[r]||seats[1].locks[r];
+function counts(p){const o={};ROWS.forEach((R,r)=>{o[R.lock]=seats[p].marks[r].filter(Boolean).length+(seats[p].locks[r]?1:0);});return o;}
+function total(p){const c=counts(p);return COLORS.reduce((a,k)=>a+tri(c[k]),0)-5*seats[p].pen;}
+function lastIdx(p,r){return seats[p].marks[r].lastIndexOf(true);}
+function gameOver(){return [0,1,2,3].filter(closed).length>=2||seats.some(s=>s.pen>=4);}
+
+let tt,pendingSame=null,pst;
+function toast(msg,el){const t=$('toast');t.textContent=msg;clearTimeout(tt);tt=setTimeout(()=>t.textContent='',2800);
+  if(el){el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');}}
+function snap(){hist.push(JSON.stringify(seats));if(hist.length>80)hist.shift();}
+function changed(p){seats[p].v=(seats[p].v||0)+1;queueSave(p);render();}
+
+function tapCell(r,i,el){
+  const p=active,s=seats[p],m=s.marks[r],li=lastIdx(p,r);
+  if(m[i]){
+    if(i!==li){toast('Nur das rechteste Kreuz einer Reihe lässt sich direkt entfernen. Sonst „Rückgängig“.',el);return;}
+    snap();m[i]=false;if(i===10)s.locks[r]=false;return changed(p);
+  }
+  if(closed(r)){
+    if(i!==10){toast('Diese Reihe ist geschlossen.',el);return;}
+    const n=m.filter(Boolean).length;
+    if(n<5){toast('Reihe geschlossen. Mitschließen geht nur mit mindestens 5 Kreuzen (du hast '+n+').',el);return;}
+    if(pendingSame!==r){pendingSame=r;clearTimeout(pst);pst=setTimeout(()=>pendingSame=null,5000);
+      toast('Mitschließen ist nur im selben Wurf über die Weiß-Summe (1. Aktion) erlaubt. Zum Bestätigen nochmal tippen.',el);return;}
+    pendingSame=null;snap();m[i]=true;s.locks[r]=true;toast('Im selben Wurf mit abgeschlossen.');return changed(p);
+  }
+  if(i<li){toast('Nur nach rechts: links vom letzten Kreuz ist gesperrt.',el);return;}
+  if(i===10){
+    const n=m.filter(Boolean).length;
+    if(n<5){toast('Das letzte Feld geht erst ab 5 Kreuzen in dieser Reihe (du hast '+n+').',el);return;}
+    snap();m[i]=true;s.locks[r]=true;
+    toast('Reihe geschlossen. Der '+CNAME[ROWS[r].lock]+'-Würfel ist raus.');return changed(p);
+  }
+  snap();m[i]=true;changed(p);
+}
+function tapPen(k){const s=seats[active];snap();s.pen=(k<s.pen)?k:k+1;changed(active);}
+
+/* ---------- Anzeige ---------- */
+function render(){
+  const P=$('players');P.innerHTML='';
+  [0,1].forEach(p=>{
+    const b=document.createElement('button');b.className='pl';b.setAttribute('aria-pressed',active===p);
+    const x=seats[p].marks.flat().filter(Boolean).length;
+    b.innerHTML='<span class="nm"></span><span class="pts">'+total(p)+'</span><span class="sub">'+x+' Kreuze · '+seats[p].pen+' Fehlwürfe</span>';
+    const nm=b.querySelector('.nm');nm.textContent=seats[p].name;
+    if(p===me){const t=document.createElement('span');t.className='me';t.textContent='du';nm.appendChild(t);}
+    b.onclick=()=>{active=p;render();};
+    P.appendChild(b);
+  });
+  const out=ROWS.filter((R,r)=>closed(r)).map(R=>CNAME[R.lock]);
+  $('dice').innerHTML='<span>Würfel im Spiel:</span>'+['w','w'].concat(COLORS).map((c,j)=>{
+    const gone=j>1&&ROWS.some((R,r)=>closed(r)&&R.lock===c);
+    return '<i class="die d-'+c+(gone?' gone':'')+'" title="'+(c==='w'?'Weiß':CNAME[c])+(gone?' (raus)':'')+'"></i>';}).join('')
+    +'<span>'+out.length+' von 2 Schlössern'+(out.length?' · raus: '+out.join(', '):'')+'</span>';
+  const ban=$('banner');
+  if(gameOver()){
+    const a=total(0),b=total(1);
+    ban.textContent='Spielende! Tragt nur noch die Kreuze aus diesem letzten Wurf ein. '+(a===b?'Gleichstand mit '+a+' Punkten.':(a>b?seats[0].name:seats[1].name)+' führt mit '+Math.max(a,b)+' zu '+Math.min(a,b)+'.');
+    ban.hidden=false;
+  }else ban.hidden=true;
+  const nf=$('pname');if(document.activeElement!==nf)nf.value=seats[active].name;
+  const p=active,box=$('rows');box.innerHTML='';
+  ROWS.forEach((R,r)=>{
+    const row=document.createElement('div');row.className='row'+(closed(r)?' closed':'');
+    const li=lastIdx(p,r);
+    R.cells.forEach(([n,c],i)=>{
+      const b=document.createElement('button'),x=seats[p].marks[r][i];
+      b.className='cell c-'+c+(x?' x':'')+(!x&&i<li?' skip':'');
+      b.textContent=n;b.setAttribute('aria-label',n+' '+CNAME[c]+(x?', angekreuzt':''));
+      b.onclick=()=>tapCell(r,i,b);row.appendChild(b);
+    });
+    const l=document.createElement('div');l.className='cell lock c-'+R.lock+(seats[p].locks[r]?' x':'');
+    l.innerHTML=LOCK_SVG;l.title='Schloss '+CNAME[R.lock];row.appendChild(l);
+    box.appendChild(row);
+  });
+  const pe=$('pens');pe.innerHTML='';
+  for(let k=0;k<4;k++){const b=document.createElement('button');b.className='pbox'+(k<seats[p].pen?' x':'');b.setAttribute('aria-label','Fehlwurf '+(k+1));b.onclick=()=>tapPen(k);pe.appendChild(b);}
+  const c=counts(p),col={r:'var(--red)',y:'var(--yellow)',g:'var(--green)',b:'var(--blue)'};
+  let h='';COLORS.forEach((k,j)=>{h+=(j?'<span class="op">+</span>':'')+'<span class="b" style="color:'+col[k]+'" title="'+c[k]+' Kreuze">'+tri(c[k])+'</span>';});
+  h+='<span class="op">−</span><span class="b" style="color:var(--muted)">'+(5*seats[p].pen)+'</span><span class="op">=</span><span class="b tot">'+total(p)+'</span>';
+  $('score').innerHTML=h;
+  $('undo').disabled=!hist.length;
+}
+
+/* ---------- Live-Abgleich ---------- */
+function setSync(state,text){const s=$('sync');s.className='sync '+state;s.querySelector('span').textContent=text;}
+const saveTimers=[null,null];let online=false;
+function queueSave(p){clearTimeout(saveTimers[p]);saveTimers[p]=setTimeout(()=>save(p),150);}
+async function save(p){
+  if(!sb)return;
+  const {error}=await sb.from('qwixx_seats').upsert({game,seat:p,data:seats[p],updated_at:new Date().toISOString()});
+  if(error){setSync('err','Nicht gespeichert – neuer Versuch …');saveTimers[p]=setTimeout(()=>save(p),2500);}
+  else if(online)setSync('on','Live verbunden');
+}
+function valid(d){return d&&Array.isArray(d.marks)&&d.marks.length===4&&Array.isArray(d.locks);}
+function applyRemote(row){
+  const p=row.seat,d=row.data;if(!(p===0||p===1)||!valid(d))return;
+  if((d.v||0)>=(seats[p].v||0)&&JSON.stringify(d)!==JSON.stringify(seats[p])){seats[p]=d;render();}
+}
+async function loadAll(){
+  const {data,error}=await sb.from('qwixx_seats').select('seat,data').eq('game',game);
+  if(error){setSync('err','Keine Verbindung');return;}
+  (data||[]).forEach(applyRemote);
+  [0,1].forEach(p=>{if(!(data||[]).some(r=>r.seat===p))save(p);});
+}
+function connect(){
+  if(!window.supabase){setSync('err','Offline: Live-Abgleich nicht geladen');return;}
+  sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false}});
+  channel=sb.channel('qwixx-'+game)
+    .on('postgres_changes',{event:'*',schema:'public',table:'qwixx_seats',filter:'game=eq.'+game},pl=>{if(pl.new)applyRemote(pl.new);})
+    .subscribe(st=>{
+      if(st==='SUBSCRIBED'){online=true;setSync('on','Live verbunden');loadAll();}
+      else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){online=false;setSync('err','Verbindung unterbrochen');}
+    });
+  loadAll();
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&sb)loadAll();});
+
+/* ---------- Start ---------- */
+function enter(code,seat){
+  game=code;me=seat;active=seat;
+  try{localStorage.setItem('qwixx-last',JSON.stringify({game,me}));}catch(e){}
+  history.replaceState(null,'','?g='+game+'&p='+(me+1));
+  $('start').hidden=true;$('game').hidden=false;
+  $('code').textContent=game;$('link').textContent=shareUrl();
+  render();connect();
+}
+function showStart(){$('start').hidden=false;$('game').hidden=true;setSync('','Kein Spiel geöffnet');
+  try{const l=JSON.parse(localStorage.getItem('qwixx-last')||'null');if(l&&l.game)$('joinCode').value=l.game;}catch(e){}}
+$('startNew').onclick=()=>enter(makeCode(),0);
+$('joinBtn').onclick=()=>{const c=cleanCode($('joinCode').value);if(c.length<4){$('joinCode').focus();return;}enter(c,1);};
+
+$('pname').addEventListener('input',e=>{seats[active].name=e.target.value.trim()||('Spieler '+(active+1));seats[active].v++;queueSave(active);
+  const nm=document.querySelectorAll('.pl .nm')[active];if(nm){nm.firstChild.textContent=seats[active].name;}});
+$('undo').onclick=()=>{if(!hist.length)return;const prev=JSON.parse(hist.pop());
+  [0,1].forEach(p=>{if(JSON.stringify(prev[p].marks)!==JSON.stringify(seats[p].marks)||prev[p].pen!==seats[p].pen||JSON.stringify(prev[p].locks)!==JSON.stringify(seats[p].locks)){
+    prev[p].v=(seats[p].v||0)+1;prev[p].name=seats[p].name;seats[p]=prev[p];queueSave(p);}});
+  render();};
+const nb=$('newgame'),cy=$('confirmNew'),cn=$('cancelNew');
+nb.onclick=()=>{cy.hidden=false;cn.hidden=false;nb.hidden=true;};
+cn.onclick=()=>{cy.hidden=true;cn.hidden=true;nb.hidden=false;};
+cy.onclick=()=>{snap();[0,1].forEach(p=>{const v=(seats[p].v||0)+1;seats[p]=freshSeat(p,seats[p].name);seats[p].v=v;queueSave(p);});cn.onclick();render();};
+$('shareBtn').onclick=async()=>{const url=shareUrl();
+  if(navigator.share){try{await navigator.share({title:'Qwixx Regenbogen',text:'Spiel mit mir Qwixx! Code '+game,url});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  copy(url);};
+$('copyBtn').onclick=()=>copy(shareUrl());
+async function copy(t){try{await navigator.clipboard.writeText(t);toast('Link kopiert.');}catch(e){const r=document.createRange();r.selectNodeContents($('link'));const s=getSelection();s.removeAllRanges();s.addRange(r);toast('Link markiert – jetzt kopieren.');}}
+
+const g=cleanCode(params.get('g'));
+if(g.length>=4)enter(g,params.get('p')==='2'?1:0);else showStart();
+</script>
+</body>
+</html>
